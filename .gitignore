@@ -1,0 +1,37 @@
+# .NET
+**/bin/
+**/obj/
+
+# MonoGame content pipeline
+GoBoard/Content/bin/
+GoBoard/Content/obj/
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# User files
+*.user
+*.suo
+*.userprefs
+
+# NuGet
+*.nupkg
+*.snupkg
+.nuget/
+
+# Debug symbols
+*.pdb
+*.cache
+
+# MonoGame generated
+*.mgcontent
+
+# Runtime artifacts
+*.runtimeconfig.json
+*.deps.json
