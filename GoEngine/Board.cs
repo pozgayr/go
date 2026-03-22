@@ -25,4 +25,9 @@ public class Board
 		return true;
 	}
 
+    public void Clear()
+    {
+        board = new Stone[Size, Size];
+    }
+
 }
