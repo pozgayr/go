@@ -1,5 +1,7 @@
 ﻿using GoEngine;
 
+namespace GoCli;
+
 class Program
 {
 

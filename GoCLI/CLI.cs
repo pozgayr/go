@@ -1,10 +1,11 @@
 using GoEngine;
 using System.Text.RegularExpressions;
 
+namespace GoCli;
+
 public class ConsoleInterface
 {
-    Board board;
-    bool blackTurn = true;
+    GameSession game;
 
     (int x, int y)? lastMove = null;
 
@@ -12,7 +13,9 @@ public class ConsoleInterface
 
     public ConsoleInterface(bool debug)
     {
-        board = new Board();
+        var startBoard = new Board();
+        var startPosition = new Position(startBoard, Player.Black);
+        game = new GameSession(startPosition);
         this.debug = debug;
     }
 
@@ -27,28 +30,31 @@ public class ConsoleInterface
                 Console.SetCursorPosition(0, 0);
             }
 
-            DrawBoard(board, lastMove);
+            DrawBoard(game.Current, lastMove);
 
             Console.WriteLine();
-            Console.WriteLine($"Turn: {(blackTurn ? "Black (X)" : "White (O)")}");
+            Console.WriteLine($"Turn: {(game.Current.ToMove == Player.Black ? "Black (X)" : "White (O)")}");
 
             Console.Write(">");
 
             string? input = Console.ReadLine();
             if (input == null) continue;
-            input = input.Trim().ToLower();
 
-            if (!HandleCommands(input)) break;
 
+            if (!HandleCommands(input, out bool handled)) break;
+
+            if (handled) continue;
 
             if (TryParseMove(input, out int x, out int y))
             {
-                var stone = blackTurn ? Stone.Black : Stone.White;
-
-                if (board.Place(x, y, stone))
+               if (game.Play(x, y))
                 {
                     lastMove = (x, y);
-                    blackTurn = !blackTurn;
+                }
+                else
+                {
+                    Console.WriteLine("Illegal move");
+                    if (!debug) Wait();
                 }
             }
         }
@@ -65,56 +71,50 @@ public class ConsoleInterface
         Console.WriteLine("  size      set board size");
     }
 
-    private bool HandleCommands(string input)
+    void ResetGame(int size)
     {
-        if (input == "q") return false;
+        var board = new Board(size);
+        var position = new Position(board, Player.Black);
+        game = new GameSession(position);
+    }
 
-        if (input == "h")
+    private bool HandleCommands(string input, out bool handled)
+    {
+        handled = true;
+
+        if (input.Equals("q", StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        if (input.Equals("h", StringComparison.OrdinalIgnoreCase))
         {
             ShowHelp();
             if (!debug) Wait();
             return true;
         }
 
-        if (input == "clear")
+        if (input.Equals("clear", StringComparison.OrdinalIgnoreCase))
         {
-            board.Clear();
+            ResetGame(game.Current.Size);
             lastMove = null;
             return true;
         }
 
-        if (input.StartsWith("size"))
-        {   
-            setSize(input);
-        }
-
-
-        if (input.StartsWith("set"))
+        if (input.StartsWith("size ", StringComparison.OrdinalIgnoreCase))
         {
-            setFromSGF(board, input);
-            lastMove = null;
+            var parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+
+            if (parts.Length == 2 && int.TryParse(parts[1], out int size) && size > 0)
+            {
+                ResetGame(size);
+                lastMove = null;
+            }
+
             return true;
         }
 
+        handled = false;
         return true;
     }
-
-    static (int x, int y) ParseSGFCoord(string s)
-    {
-        int x = s[0] - 'a';
-        int y = s[1] - 'a';
-        return (x, y);
-    }
-
-    void setSize(string input)
-    {
-        string[] parts = input.Split(' ');
-
-        if (parts.Length == 2 && parts[0] == "size" && int.TryParse(parts[1], out int size))
-        {
-            board = new Board(size);
-        }
-     }
 
     static void Wait()
     {
@@ -122,35 +122,9 @@ public class ConsoleInterface
         Console.ReadLine();
     }
 
-    static void setFromSGF(Board board, string sgf)
+    static void DrawBoard(Position pos, (int x, int y)? lastMove)
     {
-        board.Clear();
-
-        var blackMatches = Regex.Matches(sgf, @"AB(\[[a-z]{2}\])+");
-        var whiteMatches = Regex.Matches(sgf, @"AW(\[[a-z]{2}\])+");
-
-        foreach (Match m in blackMatches)
-        {
-            foreach (Match coord in Regex.Matches(m.Value, @"\[([a-z]{2})\]"))
-            {
-                var (x, y) = ParseSGFCoord(coord.Groups[1].Value);
-                board.Place(x, y, Stone.Black);
-            }
-        }
-
-        foreach (Match m in whiteMatches)
-        {
-            foreach (Match coord in Regex.Matches(m.Value, @"\[([a-z]{2})\]"))
-            {
-                var (x, y) = ParseSGFCoord(coord.Groups[1].Value);
-                board.Place(x, y, Stone.White);
-            }
-        }
-    }
-
-    static void DrawBoard(Board board, (int x, int y)? lastMove)
-    {
-        int size = board.Size;
+        int size = pos.Size;
 
         Console.Write("   ");
         for (int x = 0; x < size; x++)
@@ -168,7 +142,7 @@ public class ConsoleInterface
                               lastMove.Value.x == x &&
                               lastMove.Value.y == y;
 
-                var stone = board.Get(x, y);
+                var stone = pos.Get(x, y);
 
                 if (isLast)
                     Console.ForegroundColor = ConsoleColor.Green;
@@ -181,7 +155,6 @@ public class ConsoleInterface
                 };
 
                 Console.Write(c + " ");
-
                 Console.ResetColor();
             }
 
@@ -191,24 +164,29 @@ public class ConsoleInterface
 
     bool TryParseMove(string input, out int x, out int y)
     {
+        input = input.Trim();
         x = y = -1;
+
+        int size = game.Current.Size;
 
         if (string.IsNullOrWhiteSpace(input) || input.Length < 2)
             return false;
 
         char letter = char.ToUpper(input[0]);
 
-        if (letter >= 'I') return false; // skip I
+        if (letter == 'I') return false;
+
+        if (letter > 'I') letter--;
 
         x = letter - 'A';
 
         if (!int.TryParse(input.Substring(1), out int row))
             return false;
 
-        y = board.Size - row;
+        y = size - row;
 
-        return x >= 0 && x < board.Size &&
-               y >= 0 && y < board.Size;
+        return x >= 0 && x < size &&
+               y >= 0 && y < size;
     }
 
     static string GetLetter(int index)

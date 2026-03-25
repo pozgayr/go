@@ -7,9 +7,9 @@ namespace GoBoard;
 
 public class Game1 : Game
 {
-    Board board = new Board();
-    bool blackTurn = true;
     MouseState previousMouse;
+
+    GameSession game;
 
     int cellSize = 40;
     int margin = 60;
@@ -45,6 +45,10 @@ public class Game1 : Game
 
         blackStone = CreateStoneTexture(Color.Black);
         whiteStone = CreateStoneTexture(Color.White);
+
+        var startBoard = new Board();
+        var startPosition = new Position(startBoard, Player.Black);
+        game = new GameSession(startPosition);
     }
 
     protected override void Update(GameTime gameTime)
@@ -54,6 +58,7 @@ public class Game1 : Game
             Exit();
 
         MouseState mouse = Mouse.GetState();
+        int size = game..Size;
 
         if (mouse.LeftButton == ButtonState.Pressed &&
             previousMouse.LeftButton == ButtonState.Released)
@@ -61,14 +66,9 @@ public class Game1 : Game
             int bx = (mouse.X - margin + cellSize / 2) / cellSize;
             int by = (mouse.Y - margin + cellSize / 2) / cellSize;
 
-            if (bx >= 0 && bx < Board.Size && by >= 0 && by < Board.Size)
+            if (bx >= 0 && bx < size && by >= 0 && by < size)
             {
-                Stone color = blackTurn ? Stone.Black : Stone.White;
-
-                if (board.Place(bx, by, color))
-                {
-                    blackTurn = !blackTurn;
-                }
+                game.Play(bx, by);
             }
         }
 
@@ -90,21 +90,22 @@ public class Game1 : Game
         GraphicsDevice.Clear(new Color(240, 200, 120)); // wood-like color
 
         _spriteBatch.Begin();
+        int size = game..Size;
 
-        for (int i = 0; i < Board.Size; i++)
+        for (int i = 0; i < size; i++)
         {
             int pos = margin + i * cellSize;
 
             _spriteBatch.Draw(pixel,
-                new Rectangle(margin, pos, cellSize * (Board.Size - 1), 2),
+                new Rectangle(margin, pos, cellSize * (size - 1), 2),
                 Color.Black);
 
             _spriteBatch.Draw(pixel,
-                new Rectangle(pos, margin, 2, cellSize * (Board.Size - 1)),
+                new Rectangle(pos, margin, 2, cellSize * (size - 1)),
                 Color.Black);
         }
 
-        for (int x = 0; x < Board.Size; x++)
+        for (int x = 0; x < size; x++)
         {
             int screenX = margin + x * cellSize;
 
@@ -115,11 +116,11 @@ public class Game1 : Game
                 Color.Black);
         }
 
-        for (int y = 0; y < Board.Size; y++)
+        for (int y = 0; y < size; y++)
         {
             int screenY = margin + y * cellSize;
 
-            string number = (Board.Size - y).ToString();
+            string number = (size - y).ToString();
 
             _spriteBatch.DrawString(
                 font,
@@ -128,10 +129,11 @@ public class Game1 : Game
                 Color.Black);
         }
 
-        for (int x = 0; x < Board.Size; x++)
-        for (int y = 0; y < Board.Size; y++)
+        for (int x = 0; x < size; x++)
+        for (int y = 0; y < size; y++)
         {
-            Stone stone = board.Get(x, y);
+
+            Stone stone = game..Get(x, y);
 
             if (stone == Stone.Empty)
                 continue;
@@ -150,6 +152,12 @@ public class Game1 : Game
                     cellSize),
                 Color.White);
         }
+
+        string text = game..ToMove == Player.Black
+            ? "Black to move"
+            : "White to move";
+
+        _spriteBatch.DrawString(font, text, new Vector2(750, 800), Color.Black);
 
         _spriteBatch.End();
 
