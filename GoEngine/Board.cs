@@ -9,8 +9,14 @@ public enum Stone
 
 public class Board
 {
-	public const int Size = 13;
-	private Stone[,] board = new Stone[Size, Size];
+	public int Size { get; }
+	private Stone[,] board; 
+
+    public Board(int size=19)
+    {
+        Size = size;
+        board = new Stone[Size, Size];
+    }
 
 	public Stone Get(int x, int y)
 	{
