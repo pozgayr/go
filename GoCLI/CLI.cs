@@ -62,6 +62,7 @@ public class ConsoleInterface
         Console.WriteLine("  clear     clear board");
         Console.WriteLine("  h         help");
         Console.WriteLine("  q         quit");
+        Console.WriteLine("  size      set board size");
     }
 
     private bool HandleCommands(string input)
@@ -77,10 +78,16 @@ public class ConsoleInterface
 
         if (input == "clear")
         {
-            board = new Board();
+            board.Clear();
             lastMove = null;
             return true;
         }
+
+        if (input.StartsWith("size"))
+        {   
+            setSize(input);
+        }
+
 
         if (input.StartsWith("set"))
         {
@@ -98,7 +105,17 @@ public class ConsoleInterface
         int y = s[1] - 'a';
         return (x, y);
     }
-        
+
+    void setSize(string input)
+    {
+        string[] parts = input.Split(' ');
+
+        if (parts.Length == 2 && parts[0] == "size" && int.TryParse(parts[1], out int size))
+        {
+            board = new Board(size);
+        }
+     }
+
     static void Wait()
     {
         Console.WriteLine("Press anything to continue...");
@@ -133,7 +150,7 @@ public class ConsoleInterface
 
     static void DrawBoard(Board board, (int x, int y)? lastMove)
     {
-        int size = Board.Size;
+        int size = board.Size;
 
         Console.Write("   ");
         for (int x = 0; x < size; x++)
@@ -172,7 +189,7 @@ public class ConsoleInterface
         }
     }
 
-    static bool TryParseMove(string input, out int x, out int y)
+    bool TryParseMove(string input, out int x, out int y)
     {
         x = y = -1;
 
@@ -181,17 +198,17 @@ public class ConsoleInterface
 
         char letter = char.ToUpper(input[0]);
 
-        if (letter >= 'I') letter--; // skip I
+        if (letter >= 'I') return false; // skip I
 
         x = letter - 'A';
 
         if (!int.TryParse(input.Substring(1), out int row))
             return false;
 
-        y = Board.Size - row;
+        y = board.Size - row;
 
-        return x >= 0 && x < Board.Size &&
-               y >= 0 && y < Board.Size;
+        return x >= 0 && x < board.Size &&
+               y >= 0 && y < board.Size;
     }
 
     static string GetLetter(int index)
