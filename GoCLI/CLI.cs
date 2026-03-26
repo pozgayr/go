@@ -1,5 +1,7 @@
 using GoEngine;
 using System.Text.RegularExpressions;
+using System.IO;
+using GoSgf;
 
 namespace GoCli;
 
@@ -96,6 +98,69 @@ public class ConsoleInterface
         {
             ResetGame(game.Current.Size);
             lastMove = null;
+            return true;
+        }
+
+        if (input.StartsWith("set", StringComparison.OrdinalIgnoreCase))
+        {
+            var parts = input.Split(' ',  StringSplitOptions.RemoveEmptyEntries);
+
+            bool fromFile = false;
+            bool setupOnly = false;
+            string? argument = null;
+
+            // --- parse flags ---
+            for (int j = 1; j < parts.Length; j++)
+            {
+                if (parts[j] == "-f")
+                {
+                    fromFile = true;
+                }
+                else if (parts[j] == "-s")
+                {
+                    setupOnly = true;
+                }
+                else
+                {
+                    argument = parts[j];
+                    break;
+                }
+            }
+
+            if (argument == null)
+            {
+                Console.WriteLine("Missing SGF input");
+                if (!debug) Wait();
+                return true;
+            }
+            try
+            {
+                string sgfText;
+
+                if (fromFile)
+                {
+                    if (!File.Exists(argument))
+                    {
+                        Console.WriteLine("File not found");
+                        if (!debug) Wait();
+                        return true;
+                    }
+
+                    sgfText = File.ReadAllText(argument);
+                }
+                else
+                {
+                    sgfText = input.Substring(input.IndexOf(argument));
+                }
+                game = GoSgf.SgfLoader.LoadMainLine(sgfText, setupOnly);
+                lastMove = null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to load SGF: {ex.Message}");
+                if (!debug) Wait();
+            }
+
             return true;
         }
 
@@ -196,7 +261,6 @@ public class ConsoleInterface
         return c.ToString();
     }
 }
-
 
 
 

@@ -10,7 +10,6 @@ class Program
     {   
 
         bool debug;
-	SgfParser.Parse("hello");
         if (!checkArgs(args, out debug)) return;
 
         ConsoleInterface cli = new ConsoleInterface(debug);
