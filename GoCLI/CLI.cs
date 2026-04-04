@@ -70,7 +70,6 @@ public class ConsoleInterface
     }
 
     private bool HandleCommands(string input, out bool handled)
-    // TODO: decompose this to smaller parts ASAP
     {
         handled = true;
 

@@ -14,7 +14,7 @@ public static class SgfLoader
 
         var root = tree.Sequence[0];
 
-        int size = 19;
+        int size = 19; //default size
         if (root.Props.TryGetValue("SZ", out var sz))
             size = int.Parse(sz[0]);
 
