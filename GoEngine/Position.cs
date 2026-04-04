@@ -31,18 +31,16 @@ public class Position
 
     public bool IsLegal(int x, int y)
     {
-        if (!Board.IsOnBoard(x, y)) return false;
-        if (Board.Get(x, y) != Stone.Empty) return false;
-
         if (KoPoint.HasValue && KoPoint.Value == (x, y))
             return false;
 
         // make move on a board copy
         var copy = Board.Clone();
-        return copy.Place(x, y, ToStone(ToMove));
+        return copy.Place(x, y, ToStone(ToMove)); //also checks out of bounds and occupancy
     }
 
     public Position? Play(int x, int y)
+    // make return new position makes position immutable from outside
     {
         if (!IsLegal(x, y)) return null;
 
@@ -51,13 +49,18 @@ public class Position
         // apply move
         nextBoard.Place(x, y, ToStone(ToMove));
 
-        // TODO: compute ko
         (int x, int y)? newKo = ComputeKo(Board, nextBoard);
 
         return new Position(nextBoard, Opponent(ToMove), newKo);
     }
 
+    public Position Pass()
+    {
+        return new Position(Board, Opponent(ToMove), null);
+    }
+
     private (int x, int y)? ComputeKo(Board before, Board after)
+    // iterates through whole board maybe think about doing this smarter
     {
         var removed = new List<(int, int)>();
 

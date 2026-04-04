@@ -28,5 +28,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\GoEngine\GoEngine.csproj" />
+    <ProjectReference Include="..\GoCLI\GoCLI.csproj" />
   </ItemGroup>
 </Project>

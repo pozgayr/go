@@ -8,16 +8,11 @@ namespace GoCli;
 public class ConsoleInterface
 {
     GameSession game;
-
-    (int x, int y)? lastMove = null;
-
     bool debug;
 
     public ConsoleInterface(bool debug)
     {
-        var startBoard = new Board();
-        var startPosition = new Position(startBoard, Player.Black);
-        game = new GameSession(startPosition);
+        game = new GameSession();
         this.debug = debug;
     }
 
@@ -32,10 +27,10 @@ public class ConsoleInterface
                 Console.SetCursorPosition(0, 0);
             }
 
-            DrawBoard(game.Current, lastMove);
+            DrawBoard(game);
 
             Console.WriteLine();
-            Console.WriteLine($"Turn: {(game.Current.ToMove == Player.Black ? "Black (X)" : "White (O)")}");
+            Console.WriteLine($"Turn: {(game.ToMove == Player.Black ? "Black (X)" : "White (O)")}");
 
             Console.Write(">");
 
@@ -49,11 +44,7 @@ public class ConsoleInterface
 
             if (TryParseMove(input, out int x, out int y))
             {
-               if (game.Play(x, y))
-                {
-                    lastMove = (x, y);
-                }
-                else
+               if (!game.Play(x, y))
                 {
                     Console.WriteLine("Illegal move");
                     if (!debug) Wait();
@@ -75,12 +66,11 @@ public class ConsoleInterface
 
     void ResetGame(int size)
     {
-        var board = new Board(size);
-        var position = new Position(board, Player.Black);
-        game = new GameSession(position);
+        game = new GameSession(size);
     }
 
     private bool HandleCommands(string input, out bool handled)
+    // TODO: decompose this to smaller parts ASAP
     {
         handled = true;
 
@@ -94,90 +84,7 @@ public class ConsoleInterface
             return true;
         }
 
-        if (input.Equals("clear", StringComparison.OrdinalIgnoreCase))
-        {
-            ResetGame(game.Current.Size);
-            lastMove = null;
-            return true;
-        }
-
-        if (input.StartsWith("set", StringComparison.OrdinalIgnoreCase))
-        {
-            var parts = input.Split(' ',  StringSplitOptions.RemoveEmptyEntries);
-
-            bool fromFile = false;
-            bool setupOnly = false;
-            string? argument = null;
-
-            // --- parse flags ---
-            for (int j = 1; j < parts.Length; j++)
-            {
-                if (parts[j] == "-f")
-                {
-                    fromFile = true;
-                }
-                else if (parts[j] == "-s")
-                {
-                    setupOnly = true;
-                }
-                else
-                {
-                    argument = parts[j];
-                    break;
-                }
-            }
-
-            if (argument == null)
-            {
-                Console.WriteLine("Missing SGF input");
-                if (!debug) Wait();
-                return true;
-            }
-            try
-            {
-                string sgfText;
-
-                if (fromFile)
-                {
-                    if (!File.Exists(argument))
-                    {
-                        Console.WriteLine("File not found");
-                        if (!debug) Wait();
-                        return true;
-                    }
-
-                    sgfText = File.ReadAllText(argument);
-                }
-                else
-                {
-                    sgfText = input.Substring(input.IndexOf(argument));
-                }
-                game = GoSgf.SgfLoader.LoadMainLine(sgfText, setupOnly);
-                lastMove = null;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Failed to load SGF: {ex.Message}");
-                if (!debug) Wait();
-            }
-
-            return true;
-        }
-
-        if (input.StartsWith("size ", StringComparison.OrdinalIgnoreCase))
-        {
-            var parts = input.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-
-            if (parts.Length == 2 && int.TryParse(parts[1], out int size) && size > 0)
-            {
-                ResetGame(size);
-                lastMove = null;
-            }
-
-            return true;
-        }
-
-        handled = false;
+        handled = CommandHandler.Execute(ref game, input);
         return true;
     }
 
@@ -187,9 +94,11 @@ public class ConsoleInterface
         Console.ReadLine();
     }
 
-    static void DrawBoard(Position pos, (int x, int y)? lastMove)
+    // drawing functions note: go boards skip I
+
+    static void DrawBoard(GameSession game)
     {
-        int size = pos.Size;
+        int size = game.Size;
 
         Console.Write("   ");
         for (int x = 0; x < size; x++)
@@ -203,11 +112,11 @@ public class ConsoleInterface
 
             for (int x = 0; x < size; x++)
             {
-                bool isLast = lastMove.HasValue &&
-                              lastMove.Value.x == x &&
-                              lastMove.Value.y == y;
+                bool isLast = game.LastMove.HasValue &&
+                              game.LastMove.Value.x == x &&
+                              game.LastMove.Value.y == y;
 
-                var stone = pos.Get(x, y);
+                var stone = game.GetStone(x, y);
 
                 if (isLast)
                     Console.ForegroundColor = ConsoleColor.Green;
@@ -232,7 +141,7 @@ public class ConsoleInterface
         input = input.Trim();
         x = y = -1;
 
-        int size = game.Current.Size;
+        int size = game.Size;
 
         if (string.IsNullOrWhiteSpace(input) || input.Length < 2)
             return false;

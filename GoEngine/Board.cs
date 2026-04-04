@@ -53,7 +53,7 @@ public class Board
 		board[Index(x, y)] = stone;
         var opponent = stone == Stone.Black ? Stone.White : Stone.Black;
 
-        foreach (var (nx, ny) in GetNeighbors(x, y))
+        foreach (var (nx, ny) in GetNeighbors(x, y)) //opponent stones capture
         {
             if (board[Index(nx, ny)] == opponent)
             {
@@ -64,7 +64,7 @@ public class Board
         }
 
         var myGroup = GetGroup(x, y);
-        if (!HasLiberty(myGroup))
+        if (!HasLiberty(myGroup)) // remove my stone if it was suicide
         {
             board[Index(x, y)] = Stone.Empty; 
             return false;
